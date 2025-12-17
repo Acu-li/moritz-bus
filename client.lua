@@ -4,6 +4,7 @@ showtext = true
 point = ""
 onRoute = false
 destinationSelected = ""
+pointKey = ""
 
 local options ={}
 
@@ -22,16 +23,36 @@ Citizen.CreateThread(function()
     end
 end)
 
--- Create Schedules
+-- Create "schedule" interaction markers (replaces 3D text)
 Citizen.CreateThread(function()
     while true do
-        Wait(10)
+        Wait(0)
         if showtext then
+            local ped = PlayerPedId()
+            local coords = GetEntityCoords(ped)
+
             for index, value in pairs(Config.Locations) do
-                if #(value.Schedule - GetEntityCoords(PlayerPedId())) <= 3 then
-                    DrawText3D(value.Schedule.x, value.Schedule.y, value.Schedule.z, _U("schedule"))
+                local dist = #(value.Schedule - coords)
+
+                if dist <= (Config.Marker.DrawDistance or 15.0) then
+                    DrawMarker(
+                        Config.Marker.Type or 2,
+                        value.Schedule.x, value.Schedule.y, value.Schedule.z + 0.15,
+                        0.0, 0.0, 0.0,
+                        0.0, 0.0, 0.0,
+                        (Config.Marker.Size and Config.Marker.Size.x) or 0.35,
+                        (Config.Marker.Size and Config.Marker.Size.y) or 0.35,
+                        (Config.Marker.Size and Config.Marker.Size.z) or 0.35,
+                        255, 255, 255, 170,
+                        false, true, 2, nil, nil, false
+                    )
+                end
+
+                if dist <= (Config.Marker.InteractDistance or 1.6) then
+                    ESX.ShowHelpNotification(_U("schedule"))
                     if IsControlJustReleased(0, 38) then
                         point = value
+                        pointKey = index
                         showtext = false
                         openStationMenu()
                     end
@@ -53,7 +74,8 @@ Citizen.CreateThread(function()
 		SetBlipAsShortRange(blip, true)
 
 		BeginTextCommandSetBlipName("STRING")
-		AddTextComponentSubstringPlayerName(_U("blip"))
+		local brand = (Config.Branding and Config.BrandPreset and Config.Branding[Config.BrandPreset]) or { Short = "NBV" }
+		AddTextComponentSubstringPlayerName((brand.Short .. " – " .. _U("blip")))
 		EndTextCommandSetBlipName(blip)
 	end
 end)
@@ -64,19 +86,35 @@ end)
 ---------------
 
 function openStationMenu()
-    ESX.UI.Menu.Open( "default", GetCurrentResourceName(), "bus", {
-	title    = _U("menu_title"),
-	align = "bottom-right",
-	elements = options
-    }, function(data, menu) -- Options and functions
-        menu.close()
-        destinationSelected = data.current.value
-        createRoute(point.Departure, point.DepHead, Config.Locations[destinationSelected].Arrival, Config.Locations[destinationSelected].Price)
-        showtext = true
-    end, function(data, menu) -- Close the menu
-	menu.close()
-        showtext = true
-    end)
+    local brand = (Config.Branding and Config.BrandPreset and Config.Branding[Config.BrandPreset]) or { Short = "NBV", Long = "Neuberg Verkehrsbund" }
+
+    local ctxId = ("%s_bus_%s"):format(GetCurrentResourceName(), tostring(pointKey))
+    local ctxOptions = {}
+
+    for _, opt in ipairs(options) do
+        table.insert(ctxOptions, {
+            title = opt.label,
+            description = ("%s $%s"):format(brand.Short, tostring(Config.Locations[opt.value].Price)),
+            onSelect = function()
+                destinationSelected = opt.value
+                local price = Config.Locations[destinationSelected].Price
+                TriggerServerEvent('ikipm_bus:log', 'ticket_bought', pointKey, destinationSelected, price)
+                createRoute(point.Departure, point.DepHead, Config.Locations[destinationSelected].Arrival, price)
+                showtext = true
+            end
+        })
+    end
+
+    lib.registerContext({
+        id = ctxId,
+        title = ("%s – %s"):format(brand.Short, _U("menu_title")),
+        options = ctxOptions,
+        onExit = function()
+            showtext = true
+        end
+    })
+
+    lib.showContext(ctxId)
 end
 
 function createRoute(departure, point, destination, money)
@@ -100,10 +138,10 @@ function createRoute(departure, point, destination, money)
             while onRoute do
                 Wait(5000)
                 if #(destination - GetEntityCoords(player)) <= 15 and onRoute then
-                    FinRoute(vehicle, npc, money)
+                    FinRoute(vehicle, npc, money, 'arrived')
                     ESX.ShowNotification(_U("success", money))
                 elseif not IsPedInVehicle(player, vehicle, true) and onRoute then
-                    FinRoute(vehicle, npc, money)
+                    FinRoute(vehicle, npc, money, 'left')
                     ESX.ShowNotification(_U("error", money))
                 end
             end
@@ -147,10 +185,10 @@ function CreatePed(vehicle, pos, model)
 	end
 end
 
-function FinRoute(vehicle, npc, money)
+function FinRoute(vehicle, npc, money, result)
     onRoute = false
 
     DeletePed(npc)
     ESX.Game.DeleteVehicle(vehicle)
-    TriggerServerEvent('ikipm_bus:getMoney', money)
+    TriggerServerEvent('ikipm_bus:getMoney', money, pointKey, destinationSelected, result or "unknown")
 end
