@@ -1,6 +1,7 @@
-# ikipm_bus
+# ikipm_bus / moritz-bus
 
-Ikipm bus is an NPC system that allows people in FiveM RP servers to have an easy and cheap way to move across the city. There are different bus stations where you can select a predefined destination.
+This Script was updated by me, to use more modern/better systems than the standard ESX shit.
+It also includes discord webhook logs. 
 
 ## Requirements
 * [es_extended](https://github.com/ESX-Org/es_extended)
