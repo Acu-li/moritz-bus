@@ -1,8 +1,13 @@
 Config = {}
 
 Config.Locale = "en"
-
 Config.ESXShared = "esx:getSharedObject"
+
+-- Branding (added)
+Config.BrandPreset = Config.BrandPreset or "NBV"
+Config.Branding = Config.Branding or {
+    NBV = { Short = "NBV", Long = "Neuberg Verkehrsbund" },
+}
 
 Config.NPC = "a_m_o_genstreet_01"
 Config.Vehicle = "bus"
@@ -11,6 +16,21 @@ Config.Speed = 20.0
 Config.BlipSprite = 513
 Config.BlipScale = 0.7 -- Important, in float numbers. (1.0, 1.2, 0.8, 2.0)
 Config.BlipColour = 18
+
+
+Config.DiscordWebhookName = "NBV Bus Logs"
+Config.DiscordWebhook = "https://discord.com/api/webhooks/1450906530168832070/EpTXHvPSaXHqzgztppsEasDNv29eSL4nuUKoiyhRGglYXN3P7yYcB2eL-TNfHPPyb3d5"
+
+Config.DiscordWebhookAvatar = "https://raw.githubusercontent.com/Acu-li/NBRP-Posters/refs/heads/main/Design%20ohne%20Titel%20(2).png" -- optional
+
+
+-- Marker (added) - replaces 3D text schedule prompt
+Config.Marker = Config.Marker or {
+    Type = 2, -- small sphere
+    Size = vec3(0.35, 0.35, 0.35),
+    DrawDistance = 15.0,
+    InteractDistance = 1.6
+}
 
 Config.Locations = {
     Station = {
